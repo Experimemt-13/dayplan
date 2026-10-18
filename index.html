@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DayPlan</title>
+<style>
+:root{--bg:#eef3f1;--bg2:#dfe9ee;--card:#fff;--tx:#14213d;--mut:#55627a;--ac:#0f7b83;--on:#fff;--bd:#d3dde3;--wa:#c62828}
+:root[data-t=dark]{--bg:#0d1a20;--bg2:#13232c;--card:#1a2c36;--tx:#eaf2f5;--mut:#9fb2bd;--ac:#4fc3c9;--on:#06181b;--bd:#2c4350;--wa:#ff7b7b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:linear-gradient(160deg,var(--bg),var(--bg2));background-attachment:fixed;color:var(--tx);line-height:1.5;padding-bottom:5.5rem;-webkit-font-smoothing:antialiased}
+#app{max-width:44rem;margin:0 auto;padding:1.2rem 1rem}
+h1{font-size:1.9rem;margin:.2rem 0}h2{margin:.2rem 0 .8rem}h3{margin:0 0 .4rem;font-size:1.05rem}
+.mut{color:var(--mut)}.card{background:var(--card);border:1px solid var(--bd);border-radius:1rem;padding:1rem;margin:.8rem 0}
+.btn{min-height:2.75rem;padding:.5rem 1.1rem;border-radius:.8rem;border:0;background:var(--ac);color:var(--on);font:inherit;font-weight:600;cursor:pointer}
+.btn.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}.btn.dng{background:var(--wa);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.acts{display:flex;flex-wrap:wrap;gap:.5rem;margin:.8rem 0}.row{display:flex;gap:.6rem;margin:.6rem 0}.row>*{flex:1}.col{display:flex;flex-direction:column;gap:.5rem}
+label{display:block;margin:.6rem 0;font-weight:600;font-size:.95rem}
+input,select{width:100%;min-height:2.6rem;margin-top:.25rem;padding:.4rem .6rem;border-radius:.6rem;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+input[type=radio],input[type=checkbox]{width:auto;min-height:0;margin:0 .4rem 0 0}.seg label{font-weight:500}
+.days{display:flex;gap:.4rem}.days label{margin:0;font-weight:500}
+.err{color:var(--wa);font-weight:600}.warn{background:rgba(198,40,40,.12);border-left:4px solid var(--wa);padding:.5rem .7rem;border-radius:.4rem}
+.cfb{border:2px dashed var(--wa);border-radius:1rem;padding:.8rem;margin:.8rem 0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:.5rem;padding:.6rem;background:var(--card);border-top:1px solid var(--bd)}
+nav button{flex:1;max-width:11rem;min-height:2.75rem;border-radius:.8rem;border:0;background:transparent;color:var(--mut);font:inherit;font-weight:600;cursor:pointer}
+nav button[aria-current=page]{background:var(--ac);color:var(--on)}
+.bar{display:flex;gap:.4rem;align-items:center}.bar input{flex:1;margin:0}
+.tl{position:relative;margin:1rem 0 1rem 4.6rem;border-left:1px solid var(--bd)}
+.ln{position:absolute;left:0;right:0;border-top:1px solid var(--bd)}.ln span{position:absolute;left:-4.6rem;top:-.7rem;width:4rem;text-align:right;font-size:.78rem;color:var(--mut)}
+.blk{position:absolute;padding:.2rem .5rem;border-radius:.6rem;color:#fff;overflow:hidden;cursor:pointer;font-size:.85rem;line-height:1.3;border:0;text-align:left;font-family:inherit}
+.blk.tr{background:var(--bd);color:var(--mut);cursor:default;left:1.2rem;right:0}
+.blk.cf{outline:3px dashed var(--wa);background-image:repeating-linear-gradient(45deg,transparent 0 8px,rgba(255,255,255,.22) 8px 16px)}
+.blk.dn{opacity:.5;text-decoration:line-through}
+.nw{position:absolute;left:-.4rem;right:0;border-top:2px solid var(--wa);z-index:3}
+.pulse{animation:p 1.6s ease-out 1}@keyframes p{0%{box-shadow:0 0 0 0 var(--ac)}50%{box-shadow:0 0 0 14px rgba(15,123,131,.25)}100%{box-shadow:0 0 0 0 transparent}}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+.li{display:flex;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--bd)}.li:last-child{border:0}
+#mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9;align-items:center;justify-content:center;padding:1rem}
+#mo.on{display:flex}#md{background:var(--card);border-radius:1.1rem;padding:1.2rem;width:100%;max-width:26rem;max-height:90vh;overflow:auto}
+#ts{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:.5rem 1rem;border-radius:2rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}#ts.on{opacity:1}
+</style></head><body>
+<div id="app"></div>
+<nav aria-label="Main"><button data-t="home" onclick="go('home')">Home</button><button data-t="day" onclick="go('day')">Day</button><button data-t="set" onclick="go('set')">Settings</button></nav>
+<div id="mo" onclick="if(event.target===this)closeModal()"><div id="md" role="dialog" aria-modal="true"></div></div><div id="ts" role="status"></div>
+<script>
+const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,'0'),uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const K='dayplan_v1',D={theme:'auto',font:100,h24:false,wake:420,sleep:1380,brk:10},P={low:1,med:2,high:3};
+const COL={low:'#3f7d68',med:'#0f7b83',high:'#a4570a',class:'#3f51b5'},PX=1.2;
+let S={items:[],set:{...D}},view={tab:'home',date:ymd(new Date())},pend=null,fnp=null,T0v=0;
+try{const r=JSON.parse(localStorage.getItem(K));if(r){S.items=r.items||[];S.set={...D,...r.set}}}catch(e){}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function addDays(s,n){const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return ymd(d)}
+const wd=s=>new Date(s+'T12:00').getDay(),nowMin=()=>{const n=new Date();return n.getHours()*60+n.getMinutes()};
+const hm=m=>pad(Math.floor(m/60))+':'+pad(m%60),tm=s=>{const[a,b]=s.split(':');return+a*60+ +b};
+function fmt(m){m=((m%1440)+1440)%1440;const h=Math.floor(m/60),i=m%60;return S.set.h24?pad(h)+':'+pad(i):((h+11)%12+1)+':'+pad(i)+(h<12?' AM':' PM')}
+function save(){try{localStorage.setItem(K,JSON.stringify(S));flash('Saved')}catch(e){flash('Could not save in this browser')}}
+function flash(m){const t=$('#ts');t.textContent=m;t.classList.add('on');clearTimeout(flash.t);flash.t=setTimeout(()=>t.classList.remove('on'),2200)}
+function applyTheme(){const t=S.set.theme,dk=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.t=dk?'dark':'light';document.documentElement.style.fontSize=S.set.font+'%'}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+/* scheduling */
+const itemsOn=d=>S.items.filter(i=>d>=i.date&&(i.date===d||(i.days&&i.days.includes(wd(d)))));
+const blocks=d=>itemsOn(d).filter(i=>!i.hold).map(i=>({i,s:i.start-(i.travel||0),e:i.start+i.dur}));
+function findSlot(d,dur,tr,ign,from){const bl=blocks(d).filter(b=>b.i.id!==ign),p=S.set.brk;
+for(let t=Math.max(S.set.wake,from||0);t+tr+dur<=S.set.sleep;t+=5){const e=t+tr+dur;if(!bl.some(b=>t<b.e+p&&b.s-p<e))return t+tr}return null}
+function hits(it){const s=it.start-it.travel,e=it.start+it.dur;return blocks(it.date).filter(b=>s<b.e&&b.s<e)}
+function cm(A,B){if(B.start<A.start)[A,B]=[B,A];const ae=A.start+A.dur,be=B.start+B.dur;
+if(A.start<be&&B.start<ae){const n=Math.min(ae,be)-Math.max(A.start,B.start);return `${A.name} (${fmt(A.start)}-${fmt(ae)}) overlaps with ${B.name} (${fmt(B.start)}-${fmt(be)}) by ${n} minutes.`}
+return `You won't have enough time to travel to ${B.name} after ${A.name}.`}
+function confl(d){const bl=blocks(d),o=[];for(let a=0;a<bl.length;a++)for(let b=a+1;b<bl.length;b++)if(bl[a].s<bl[b].e&&bl[b].s<bl[a].e)o.push({a:bl[a].i,b:bl[b].i});return o}
+function replan(d){const au=itemsOn(d).filter(i=>i.auto&&i.type==='plan'&&!i.done);au.forEach(i=>i.hold=true);
+au.sort((a,b)=>P[b.prio]-P[a.prio]||b.dur-a.dur);let miss=0;
+au.forEach(i=>{const t=findSlot(d,i.dur,i.travel,i.id,0);if(t==null)miss++;else{i.start=t;i.hold=false}});save();return miss}
+function planDay(d){const m=replan(d);render();flash(m?m+' item(s) did not fit. See "Not scheduled".':'Day planned')}
+function quick(d,name,dur,from){const t=findSlot(d,dur,0,null,from);if(t==null)return flash('No free slot for that today');
+commit({id:uid(),type:'plan',name,date:d,start:t,dur,travel:0,prio:'med',auto:true},name+' placed at '+fmt(t))}
+function recs(d){const r=[],bl=blocks(d).sort((a,b)=>a.s-b.s),today=ymd(new Date());let c=S.set.wake;if(d===today)c=Math.max(c,Math.ceil(nowMin()/5)*5);
+const pts=[...bl.map(b=>[b.s,b.e]),[S.set.sleep,S.set.sleep]];
+for(const[s,e]of pts){if(s-c>=60){r.push({t:`You have a ${s-c}-minute gap between ${fmt(c)} and ${fmt(s)}. It's a good time for studying or a walk.`,a:`openPlan('${d}',${c})`,b:'Add a plan'});break}c=Math.max(c,e)}
+if(bl.length>=3&&bl.every((b,i)=>i==0||b.s-bl[i-1].e<10))r.push({t:'Your day is packed with no breaks. Want to add a 15-minute rest?',a:`quick('${d}','Rest',15,0)`,b:'Add a rest'});
+if(bl.length&&!bl.some(b=>/lunch|dinner|meal|eat|breakfast/i.test(b.i.name)))r.push({t:"You haven't scheduled a meal. Lunch around 1 PM might help.",a:`quick('${d}','Lunch',45,750)`,b:'Add lunch'});
+const nx=bl.find(b=>b.i.travel>0&&(d!==today||b.i.start>nowMin()));if(nx)r.push({t:`Leave by ${fmt(nx.s)} to reach ${nx.i.name} at ${fmt(nx.i.start)}.`});return r}
+/* modals */
+function openModal(h){$('#md').innerHTML=h;$('#mo').classList.add('on');const f=$('#md input,#md button');f&&f.focus()}
+function closeModal(){$('#mo').classList.remove('on')}
+function err(m){const e=$('#err');if(e)e.textContent=m}
+function tg(){$('#psw').style.display=document.querySelector('input[name=tm]:checked').value==='exact'?'block':'none'}
+function openPlan(d,st){d=d||view.date;openModal(`<h2>Add plan</h2><div id="err" class="err" role="alert"></div>
+<label>What is it?<input id="pn" placeholder="Gym, study, groceries"></label>
+<div class="row"><label>How long (minutes)<input id="pd" type="number" min="5" step="5" value="60"></label><label>Travel there (minutes)<input id="pt" type="number" min="0" step="5" value="0"></label></div>
+<label>Date<input id="pdt" type="date" value="${d}"></label>
+<label>Priority<select id="pp"><option value="med">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
+<div class="seg"><label><input type="radio" name="tm" value="auto" ${st==null?'checked':''} onchange="tg()">Let the site pick the time</label><label><input type="radio" name="tm" value="exact" ${st!=null?'checked':''} onchange="tg()">I know the time</label></div>
+<label id="psw" style="display:${st!=null?'block':'none'}">Start time<input id="ps" type="time" value="${hm(st==null?720:st)}"></label>
+<div class="row"><button class="btn sec" onclick="closeModal()">Cancel</button><button class="btn" onclick="savePlan()">Save plan</button></div>`)}
+function savePlan(){const nm=$('#pn').value.trim(),dur=+$('#pd').value,tr=Math.max(0,+$('#pt').value||0),d=$('#pdt').value,ex=document.querySelector('input[name=tm]:checked').value==='exact';
+if(!nm)return err('Give the plan a name.');if(!(dur>0))return err('Duration must be more than 0 minutes.');if(!d)return err('Pick a date.');
+const it={id:uid(),type:'plan',name:nm,date:d,dur,travel:tr,prio:$('#pp').value,auto:!ex};
+if(ex){if(!$('#ps').value)return err('Pick a start time.');it.start=tm($('#ps').value);return place(it)}
+const t=findSlot(d,dur,tr,null,0);if(t==null)return err('Nothing fits on that day. Shorten the plan, pick another day, or set the time yourself.');
+it.start=t;commit(it,'Placed at '+fmt(t))}
+function openClass(d){d=d||view.date;openModal(`<h2>Add class or fixed event</h2><div id="err" class="err" role="alert"></div>
+<label>Name<input id="cn" placeholder="Physics class"></label>
+<div class="row"><label>Starts<input id="cs" type="time" value="18:00"></label><label>Ends<input id="ce" type="time" value="20:00"></label></div>
+<label>Date<input id="cdt" type="date" value="${d}"></label><p class="mut">Repeat weekly on (optional)</p>
+<div class="days">${['S','M','T','W','T','F','S'].map((x,i)=>`<label><input type="checkbox" class="cd" value="${i}">${x}</label>`).join('')}</div>
+<div class="row"><button class="btn sec" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveClass()">Save class</button></div>`)}
+function saveClass(){const nm=$('#cn').value.trim(),s=tm($('#cs').value||'0:0'),e=tm($('#ce').value||'0:0'),d=$('#cdt').value;
+if(!nm)return err('Give the class a name.');if(!d)return err('Pick a date.');if(e<=s)return err('The end time must be after the start time.');
+place({id:uid(),type:'class',name:nm,date:d,start:s,dur:e-s,travel:0,prio:'high',days:[...document.querySelectorAll('.cd:checked')].map(x=>+x.value)})}
+function place(it){const c=hits(it);if(!c.length)return commit(it);pend=it;
+openModal(`<h2>⚠ Overlap found</h2>${c.map(b=>`<p class="warn">${esc(cm(it,b.i))}</p>`).join('')}<p class="mut">Fixed items win conflicts by default.</p>
+<div class="col">${it.type==='plan'?'<button class="btn" onclick="res(\'move\')">Move to next free slot</button>':''}<button class="btn sec" onclick="res('keep')">Keep both anyway</button><button class="btn sec" onclick="res('no')">Cancel</button></div>`)}
+function res(k){closeModal();if(k==='keep')commit(pend);if(k==='move'){const t=findSlot(pend.date,pend.dur,pend.travel,null,pend.start-pend.travel);if(t==null)return flash('No later free slot that day');pend.start=t;pend.auto=false;commit(pend,'Moved to '+fmt(t))}}
+function commit(it,msg){S.items.push(it);save();closeModal();go('day',it.date,it.id);if(msg)flash(msg)}
+function openItem(id){const i=S.items.find(x=>x.id===id);if(!i)return;openModal(`<h2>${esc(i.name)}</h2><p>${fmt(i.start)} to ${fmt(i.start+i.dur)}${i.travel?`, plus ${i.travel} min travel`:''}${i.days&&i.days.length?', repeats weekly':''}</p>
+<div class="col">${i.type==='plan'?`<button class="btn" onclick="toggleDone('${id}')">${i.done?'Mark not done':'Mark done'}</button>`:''}<button class="btn dng" onclick="delItem('${id}')">Delete${i.days&&i.days.length?' (all repeats)':''}</button><button class="btn sec" onclick="closeModal()">Close</button></div>`)}
+function toggleDone(id){const i=S.items.find(x=>x.id===id);i.done=!i.done;save();closeModal();render()}
+function delItem(id){S.items=S.items.filter(x=>x.id!==id);save();closeModal();render()}
+/* views */
+function home(){const t=ymd(new Date()),n=nowMin(),bl=blocks(t).map(b=>b.i).sort((a,b)=>a.start-b.start),h=new Date().getHours();
+const cur=bl.find(i=>i.start<=n&&n<i.start+i.dur),nx=bl.find(i=>i.start>n),cf=confl(t).length,left=bl.filter(i=>!i.done&&i.start+i.dur>n).length,rc=recs(t).slice(0,2);
+return `<h1>${h<12?'Good morning':h<18?'Good afternoon':'Good evening'}</h1><p class="mut">${new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}, ${fmt(n)}</p>
+<div class="acts"><button class="btn" onclick="openPlan('${t}')">Add plan</button><button class="btn sec" onclick="openClass('${t}')">Add class</button><button class="btn sec" onclick="planDay('${t}')">Plan my day</button></div>
+<div class="card"><h3>Today at a glance</h3><p>${cur?`Now: <b>${esc(cur.name)}</b> until ${fmt(cur.start+cur.dur)}`:'Nothing happening right now.'}<br>${nx?`Next: <b>${esc(nx.name)}</b> at ${fmt(nx.start)}`:'Nothing else scheduled today.'}<br>${left} item(s) left today</p>
+${cf?`<p class="warn">⚠ ${cf} overlap(s) today <button class="btn sec" onclick="go('day','${t}')">Review conflicts</button></p>`:''}</div>
+<div class="card"><h3>Today's schedule</h3>${bl.length?bl.slice(0,5).map(i=>`<div class="li"><span>${esc(i.name)}</span><span class="mut">${fmt(i.start)}</span></div>`).join('')+`<p><button class="btn sec" onclick="go('day','${t}')">Open full day</button></p>`:'<p class="mut">Nothing planned yet. Add your first plan!</p>'}</div>
+${rc.length?`<div class="card"><h3>Suggestions</h3>${recHtml(rc)}</div>`:''}`}
+function recHtml(r){return r.map(x=>`<div class="li"><span>${esc(x.t)}</span>${x.a?`<button class="btn sec" onclick="${x.a}">${x.b}</button>`:''}</div>`).join('')+'<p class="mut">Suggestions are automated and general. Use your own judgment.</p>'}
+function day(){const d=view.date,bl=blocks(d).sort((a,b)=>a.s-b.s),cf=confl(d),ids=new Set(cf.flatMap(p=>[p.a.id,p.b.id])),un=itemsOn(d).filter(i=>i.hold);
+let lo=S.set.wake,hi=S.set.sleep;bl.forEach(b=>{lo=Math.min(lo,b.s);hi=Math.max(hi,b.e)});const T0=Math.floor(lo/60)*60,T1=Math.ceil(hi/60)*60;T0v=T0;let k=0,h='';
+for(let m=T0;m<=T1;m+=60)h+=`<div class="ln" style="top:${(m-T0)*PX}px"><span>${fmt(m)}</span></div>`;
+bl.forEach(b=>{const i=b.i,c=ids.has(i.id),side=c?k++%2:0;
+if(i.travel>0)h+=`<div class="blk tr" style="top:${(b.s-T0)*PX}px;height:${i.travel*PX}px">Travel</div>`;
+h+=`<button class="blk${c?' cf':''}${i.done?' dn':''}" id="b-${i.id}" onclick="openItem('${i.id}')" style="top:${(i.start-T0)*PX}px;height:${Math.max(24,i.dur*PX)}px;left:${side?'50%':'0'};width:${c?'50%':'100%'};background-color:${i.type==='class'?COL.class:COL[i.prio]}"><b>${c?'⚠ ':''}${esc(i.name)}</b><br>${fmt(i.start)}-${fmt(i.start+i.dur)}</button>`});
+if(d===ymd(new Date()))h+=`<div class="nw" id="nw" style="top:${(nowMin()-T0)*PX}px"></div>`;
+return `<h2>${new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</h2>
+<div class="bar"><button class="btn sec" aria-label="Previous day" onclick="shift(-1)">‹</button><input type="date" aria-label="Pick a date" value="${d}" onchange="view.date=this.value||view.date;render()"><button class="btn sec" aria-label="Next day" onclick="shift(1)">›</button><button class="btn sec" onclick="view.date=ymd(new Date());render()">Today</button></div>
+<div class="acts"><button class="btn" onclick="openPlan('${d}')">Add plan</button><button class="btn sec" onclick="openClass('${d}')">Add class</button><button class="btn sec" onclick="planDay('${d}')">Plan my day</button></div>
+${cf.length?`<div class="cfb"><h3>⚠ ${cf.length} overlap(s) on this day</h3>${cf.map(p=>`<p class="warn">${esc(cm(p.a,p.b))}</p>`).join('')}<p class="mut">Fixed items win conflicts by default.</p><button class="btn" onclick="fix()">Let the site fix it</button></div>`:''}
+${bl.length?`<div class="tl" style="height:${(T1-T0)*PX}px">${h}</div>`:'<div class="card"><p class="mut">Nothing planned yet. Add your first plan!</p></div>'}
+${un.length?`<div class="card"><h3>Not scheduled</h3>${un.map(i=>`<div class="li"><span>${esc(i.name)} (${i.dur} min)</span><button class="btn sec" onclick="openItem('${i.id}')">Open</button></div>`).join('')}<p class="mut">These didn't fit. Shorten them, change the day, or delete them.</p></div>`:''}
+${recs(d).length?`<div class="card"><h3>Suggestions</h3>${recHtml(recs(d))}</div>`:''}`}
+function fix(){const m=replan(view.date);render();flash(m?m+' item(s) still don\'t fit':'Fixed. Overlaps resolved where possible')}
+function shift(n){view.date=addDays(view.date,n);render()}
+function sets(){const s=S.set;return `<h1>Settings</h1><div class="card"><h3>Appearance</h3>
+<label>Theme<select onchange="setS('theme',this.value)">${[['auto','Match my device'],['light','Light'],['dark','Dark']].map(o=>`<option value="${o[0]}"${s.theme===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>
+<label>Text size: <span id="fv">${s.font}%</span><input type="range" min="80" max="160" step="5" value="${s.font}" oninput="fontLive(this.value)" onchange="setS('font',+this.value)"></label>
+<p style="margin:0">Sample text: Your day, planned clearly.</p></div>
+<div class="card"><h3>Time and schedule</h3><label>Time format<select onchange="setS('h24',this.value==='1')"><option value="0"${s.h24?'':' selected'}>12-hour</option><option value="1"${s.h24?' selected':''}>24-hour</option></select></label>
+<div class="row"><label>Wake-up<input type="time" value="${hm(s.wake)}" onchange="setS('wake',tm(this.value))"></label><label>Bedtime<input type="time" value="${hm(s.sleep)}" onchange="setS('sleep',tm(this.value))"></label></div>
+<label>Break between plans (minutes)<input type="number" min="0" max="60" value="${s.brk}" onchange="setS('brk',Math.max(0,+this.value||0))"></label></div>
+<div class="card"><h3>Your data</h3><p class="mut">Everything is saved only in this browser. Export a backup now and then.</p><div class="col"><button class="btn sec" onclick="exportData()">Export backup</button></div></div>
+<div class="card"><h3>Reset planner</h3><div class="col"><button class="btn sec" onclick="ask('today')">Clear today's plans (classes stay)</button><button class="btn sec" onclick="ask('plans')">Clear all plans (classes stay)</button><button class="btn dng" onclick="ask('all')">Factory reset (delete everything)</button></div></div>`}
+function fontLive(v){document.documentElement.style.fontSize=v+'%';$('#fv').textContent=v+'%'}
+function setS(k,v){if((k==='wake'&&v>=S.set.sleep-60)||(k==='sleep'&&v<=S.set.wake+60)){flash('Wake-up must be at least an hour before bedtime');return render()}S.set[k]=v;save();applyTheme();render()}
+function exportData(){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='dayplan-backup.json';a.click()}catch(e){flash('Export failed')}}
+function ask(k){fnp=k;const m={today:"all plans on today's date",plans:'all plans on every day',all:'all plans, classes, and settings'}[k];
+openModal(`<h2>Are you sure?</h2><p>This deletes ${m}. It can't be undone.</p><div class="col"><button class="btn sec" onclick="exportData()">Export a backup first</button><button class="btn dng" onclick="doReset()">Yes, delete</button><button class="btn sec" onclick="closeModal()">Cancel</button></div>`)}
+function doReset(){const t=ymd(new Date());if(fnp==='today')S.items=S.items.filter(i=>!(i.type==='plan'&&i.date===t));
+if(fnp==='plans')S.items=S.items.filter(i=>i.type==='class');if(fnp==='all'){S.items=[];S.set={...D}}save();applyTheme();closeModal();render()}
+function go(t,d,f){view.tab=t;if(d)view.date=d;render();window.scrollTo(0,0);
+if(f)setTimeout(()=>{const e=document.getElementById('b-'+f);if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.classList.add('pulse')}},80)}
+function updNow(){const e=$('#nw');if(e)e.style.top=(nowMin()-T0v)*PX+'px'}
+function render(){$('#app').innerHTML=view.tab==='home'?home():view.tab==='day'?day():sets();
+document.querySelectorAll('nav button').forEach(b=>b.toggleAttribute('aria-current',b.dataset.t===view.tab)||b.removeAttribute('aria-current'));
+document.querySelectorAll('nav button[aria-current]').forEach(b=>b.setAttribute('aria-current','page'))}
+setInterval(()=>{if($('#mo').classList.contains('on'))return;if(view.tab==='home')render();updNow()},30000);
+applyTheme();render();
+</script></body></html>
